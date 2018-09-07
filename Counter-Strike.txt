@@ -1,0 +1,294 @@
+#include<iostream>//
+#include<ctime>//
+#include<conio.h> // для _getch()
+#include<windows.h> // библиотека для работы с типом COORD
+using namespace std;
+
+HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE); // дескриптор консоли
+
+enum OBMAP { EDGE = 1, SPACE = 0, ENEMY = 3 }; // все объекты 
+
+enum TURN { LEFT = 75, RIGHT = 77, TOP = 72, BOT = 80 }; // перечисление направлений стрелок на клавиатуре
+
+int over = false;
+
+char** mass; // двумерный массив который хранит расположение всех объектов
+
+void ShowObj(int x, int y, int col, char* raw)  //функция для отрисовки цветных объектов в определенной координате
+{
+	COORD c = { x, y };
+	SetConsoleCursorPosition(handle, c);
+	SetConsoleTextAttribute(handle, col);
+	cout << raw;
+} 
+
+void ShowObj(int x, int y, int col, char raw)  //функция для отрисовки цветных объектов в определенной координате
+{
+	COORD c = { x, y };
+	SetConsoleCursorPosition(handle, c);
+	SetConsoleTextAttribute(handle, col);
+	cout << raw;
+}
+
+void ShowObj(int x, int y, char raw) //функция для отрисовки объектов в определенной координате
+{
+	COORD z{ x, y };
+	SetConsoleCursorPosition(handle, z);
+	cout << raw;
+}
+
+void Configuration()
+{
+	system("title Counter Strike Beta");
+	system("mode con cols=70 lines=40");
+	CONSOLE_CURSOR_INFO ci;   // скрываем курсор
+	ci.bVisible = 0;
+	ci.dwSize = 0;
+	SetConsoleCursorInfo(handle, &ci);
+	srand(time(0)); //Чтоб рандом раномился после каждого запуска программы
+	rand();
+}
+
+void Shot(COORD hero, char turn)//передаем координаты героя и направление выстрела
+{
+	for (int i = 0; i < 20; i++) //выстрел на 20 клеточек
+	{
+		if (turn == 'l')  //направление выстрела
+		{
+			if (mass[hero.X - 1][hero.Y] != EDGE) //выстрел не может разрушить стенку
+			{
+				mass[hero.X][hero.Y] = SPACE;   //анимация выстрела и уничтожение всех объектов кроме стен
+				hero.X--;
+				ShowObj(hero.X, hero.Y, 2, 249);
+				Sleep(30);
+				ShowObj(hero.X, hero.Y, 2, ' ');
+			}
+			else break;
+		}
+
+		else if (turn == 'r')  //направление выстрела
+		{
+			if (mass[hero.X + 1][hero.Y] != EDGE) //выстрел не может разрушить стенку
+			{
+				mass[hero.X][hero.Y] = SPACE;   //анимация выстрела и уничтожение всех объектов кроме стен
+				hero.X++;
+				ShowObj(hero.X, hero.Y, 2, 249);
+				Sleep(30);
+				ShowObj(hero.X, hero.Y, 2, ' ');
+			}
+			else break;
+		}
+
+		else if (turn == 't')  //направление выстрела
+		{
+			if (mass[hero.X][hero.Y - 1] != EDGE) //выстрел не может разрушить стенку
+			{
+				mass[hero.X][hero.Y] = SPACE;   //анимация выстрела и уничтожение всех объектов кроме стен
+				hero.Y--;
+				ShowObj(hero.X, hero.Y, 2, 249);
+				Sleep(30);
+				ShowObj(hero.X, hero.Y, 2, ' ');
+			}
+			else break;
+		}
+
+		else if (turn == 'b')  //направление выстрела
+		{
+			if (mass[hero.X][hero.Y + 1] != EDGE) //выстрел не может разрушить стенку
+			{
+				mass[hero.X][hero.Y] = SPACE;   //анимация выстрела и уничтожение всех объектов кроме стен
+				hero.Y++;
+				ShowObj(hero.X, hero.Y, 2, 249);
+				Sleep(30);
+				ShowObj(hero.X, hero.Y, 2, ' ');
+			}
+			else break;
+		}
+	}
+}
+
+void Position(COORD hero)
+{
+	if (mass[hero.X][hero.Y] == ENEMY)  //проверка на луз
+	{
+		system("cls");
+		ShowObj(50, 50, 12, "You are dead!\n\n");
+		system("pause");
+	}
+}
+
+bool EnemyMove(int w, int h, COORD hero)
+{
+	bool Winner = true; // если не останется противников то мы не зайдем в 127 строку и это значит что  противников не осталось
+	for (int x = 0; x < w; ++x) //двойным циклом проходим по всем элементам двумерного массива
+	{
+		for (int y = 0; y < h; ++y)
+		{
+			if (mass[x][y] == ENEMY) //если очередной элемент = противник
+			{
+				Winner = false; //противники ещё есть
+				if (y < hero.Y) //направляем противников в сторону героя
+				{
+					if (mass[x][y + 1] != EDGE && mass[x][y + 1] != ENEMY) //проверка чтобы не наступать на стенки и других противников
+					{
+						mass[x][y] = SPACE;   //освобождаем место в массиве и перемещаем противника
+						ShowObj(x, y, ' ');
+						ShowObj(x, y + 1, 12, 1);
+						mass[x][y + 1] = ENEMY;
+					}
+				}
+
+				else if (x < hero.X)//направляем противников в сторону героя
+				{
+					if (mass[x + 1][y] != EDGE && mass[x + 1][y] != ENEMY) //проверка чтобы не наступать на стенки и других противников
+					{
+						mass[x][y] = SPACE;   //освобождаем место в массиве и перемещаем противника
+						ShowObj(x, y, ' ');
+						ShowObj(x + 1, y, 12, 1);
+						mass[x + 1][y] = ENEMY;
+					}
+				}
+				else if (y > hero.Y)//направляем противников в сторону героя
+				{
+					if (mass[x][y - 1] != EDGE && mass[x][y - 1] != ENEMY) //проверка чтобы не наступать на стенки и других противников
+					{
+						mass[x][y] = SPACE;   //освобождаем место в массиве и перемещаем противника
+						ShowObj(x, y, ' ');
+						ShowObj(x, y - 1, 12, 1);
+						mass[x][y - 1] = ENEMY;
+					}
+				}
+
+				else if (x > hero.X)//направляем противников в сторону героя
+				{
+					if (mass[x - 1][y] != EDGE && mass[x - 1][y] != ENEMY) //проверка чтобы не наступать на стенки и других противников
+					{
+						mass[x][y] = SPACE;   //освобождаем место в массиве и перемещаем противника
+						ShowObj(x, y, ' ');
+						ShowObj(x - 1, y, 12, 1);
+						mass[x - 1][y] = ENEMY;
+					}
+				}
+			}
+			Position(hero);// lose?
+		}
+	}
+	return Winner;
+}
+
+void Win()
+{
+	system("cls");
+	ShowObj(50, 50, 12, "You kill whem all!\n\n");
+	system("pause");
+}
+
+void MoveHero(int w, int h)
+{
+	int k;
+	char s_turn;
+	COORD hero{ 2,2 };
+	ShowObj(hero.X, hero.Y, 14, 2);
+	while (true)
+	{
+		k = _getch();//записываем нажатую клавишу
+		switch (k)
+		{
+		case LEFT:
+			s_turn = 'l';    //записываем направление выстрела
+			if (mass[hero.X - 1][hero.Y] != EDGE)    //проверка чтобы не наступать на стенки
+			{
+				ShowObj(hero.X, hero.Y, 14, ' ');
+				hero.X--;
+				ShowObj(hero.X, hero.Y, 14, 2);
+				if (EnemyMove(w, h, hero) == true)
+					Win();
+			}
+			break;
+
+		case RIGHT:
+			s_turn = 'r';    //записываем направление выстрела
+			if (mass[hero.X + 1][hero.Y] != EDGE)    //проверка чтобы не наступать на стенки
+			{
+				ShowObj(hero.X, hero.Y, 14, ' ');
+				hero.X++;
+				ShowObj(hero.X, hero.Y, 14, 2);
+				if (EnemyMove(w, h, hero) == true)
+					Win();
+			}
+			break;
+
+		case BOT:
+			s_turn = 'b';    //записываем направление выстрела
+			if (mass[hero.X][hero.Y + 1] != EDGE)    //проверка чтобы не наступать на стенки
+			{
+				ShowObj(hero.X, hero.Y, 14, ' ');
+				hero.Y++;
+				ShowObj(hero.X, hero.Y, 14, 2);
+				if (EnemyMove(w, h, hero) == true)
+					Win();
+			}
+			break;
+
+		case TOP:
+			s_turn = 't';    //записываем направление выстрела
+			if (mass[hero.X][hero.Y - 1] != EDGE)    //проверка чтобы не наступать на стенки
+			{
+				ShowObj(hero.X, hero.Y, 14, ' ');
+				hero.Y--;
+				ShowObj(hero.X, hero.Y, 14, 2);
+				if (EnemyMove(w, h, hero) == true)
+					Win();
+			}
+			break;
+
+		case 32: //space = shot
+			Shot(hero, s_turn);
+			break;
+		}
+	}
+}
+
+void Map()
+{
+	short chance;
+	const int w = 60;
+	const int h = 30;
+	mass = new char*[w];
+	for (int i = 0; i < w; ++i)
+	{
+		mass[i] = new char[h];
+		for (int j = 0; j < h; ++j)
+		{
+			chance = rand() % 31;
+			if (i == 0 || j == 0 || i == w - 1 || j == h - 1)
+			{
+				mass[i][j] = EDGE;
+				ShowObj(i, j, 10, 219);
+			}
+
+			else if (chance % 20 == 0) // 1 к 20 спавн препятствия
+			{
+				mass[i][j] = EDGE;
+				ShowObj(i, j, 10, 219);
+			}
+
+			else if (chance % 30 == 0 && i > 5 && j > 5) // 1 к 30 спавн противника
+			{
+				mass[i][j] = ENEMY;
+				ShowObj(i, j, 12, 1);
+			}
+
+			else mass[i][j] = SPACE;
+		}
+	}
+	MoveHero(w, h);
+	delete[] mass;
+}
+
+int main()
+{
+	Configuration();
+	Map();
+	system("pause");
+}
